@@ -12,41 +12,76 @@
 #include <sys/sendfile.h>
 #include <sys/stat.h>
 #include <sys/vfs.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 #ifdef ANDROID_RB_POWEROFF
 	#include "cutils/android_reboot.h"
 #endif
 #include <iostream>
 #include <fstream>
+#include <sstream>
 #include "twrp-functions.hpp"
 #include "partitions.hpp"
-#include "common.h"
+#include "twcommon.h"
 #include "data.hpp"
-#include "bootloader.h"
 #include "variables.h"
+#include "bootloader.h"
+#ifndef TW_EXCLUDE_ENCRYPTED_BACKUPS
+	#include "openaes/inc/oaes_lib.h"
+#endif
 
 extern "C" {
 	#include "libcrecovery/common.h"
 }
 
-
 /* Execute a command */
-
 int TWFunc::Exec_Cmd(string cmd, string &result) {
-	FILE* exec;
-	char buffer[130];
-	int ret = 0;
-	exec = __popen(cmd.c_str(), "r");
-	if (!exec) return -1;
-	while(!feof(exec)) {
-		memset(&buffer, 0, sizeof(buffer));
-		if (fgets(buffer, 128, exec) != NULL) {
-			buffer[128] = '\n';
-			buffer[129] = NULL;
+   int fd[2];
+   int ret = -1;
+   if(pipe(fd) < 0)
+		return -1;
+
+	pid_t pid = fork();
+	if (pid < 0)
+	{
+		close(fd[0]);
+		close(fd[1]);
+		return -1;
+	}
+
+	if(pid == 0) // child
+	{
+		close(fd[0]);
+		dup2(fd[1], 1);  // send stdout to the pipe
+		dup2(fd[1], 2);  // send stderr to the pipe
+		close(fd[1]);
+
+		ret = system(cmd.c_str());
+		if(ret != -1)
+			ret = WEXITSTATUS(ret);
+		else
+			LOGERR("Exec_Cmd: system() failed with -1 (%d)!\n", errno);
+		exit(ret);
+	}
+	else
+	{
+		close(fd[1]);
+
+		int len;
+		char buffer[128];
+		buffer[sizeof(buffer)-1] = 0;
+		while ((len = read(fd[0], buffer, sizeof(buffer)-1)) > 0)
+		{
+			buffer[len] = 0;
+			buffer[sizeof(buffer)-2] = '\n';
+			LOGINFO("%s", buffer);
 			result += buffer;
 		}
+
+		waitpid(pid, &ret, 0);
+		return WEXITSTATUS(ret);
 	}
-	ret = __pclose(exec);
-	return ret;
+	return -1;
 }
 
 // Returns "file.name" from a full /path/to/file.name
@@ -96,33 +131,33 @@ void TWFunc::install_htc_dumlock(void) {
 	if (!PartitionManager.Mount_By_Path("/data", true))
 		return;
 
-	ui_print("Installing HTC Dumlock to system...\n");
+	gui_print("Installing HTC Dumlock to system...\n");
 	copy_file("/res/htcd/htcdumlocksys", "/system/bin/htcdumlock", 0755);
 	if (!Path_Exists("/system/bin/flash_image")) {
-		ui_print("Installing flash_image...\n");
+		gui_print("Installing flash_image...\n");
 		copy_file("/res/htcd/flash_imagesys", "/system/bin/flash_image", 0755);
 		need_libs = 1;
 	} else
-		ui_print("flash_image is already installed, skipping...\n");
+		gui_print("flash_image is already installed, skipping...\n");
 	if (!Path_Exists("/system/bin/dump_image")) {
-		ui_print("Installing dump_image...\n");
+		gui_print("Installing dump_image...\n");
 		copy_file("/res/htcd/dump_imagesys", "/system/bin/dump_image", 0755);
 		need_libs = 1;
 	} else
-		ui_print("dump_image is already installed, skipping...\n");
+		gui_print("dump_image is already installed, skipping...\n");
 	if (need_libs) {
-		ui_print("Installing libs needed for flash_image and dump_image...\n");
+		gui_print("Installing libs needed for flash_image and dump_image...\n");
 		copy_file("/res/htcd/libbmlutils.so", "/system/lib/libbmlutils.so", 0755);
 		copy_file("/res/htcd/libflashutils.so", "/system/lib/libflashutils.so", 0755);
 		copy_file("/res/htcd/libmmcutils.so", "/system/lib/libmmcutils.so", 0755);
 		copy_file("/res/htcd/libmtdutils.so", "/system/lib/libmtdutils.so", 0755);
 	}
-	ui_print("Installing HTC Dumlock app...\n");
+	gui_print("Installing HTC Dumlock app...\n");
 	mkdir("/data/app", 0777);
 	unlink("/data/app/com.teamwin.htcdumlock*");
 	copy_file("/res/htcd/HTCDumlock.apk", "/data/app/com.teamwin.htcdumlock.apk", 0777);
 	sync();
-	ui_print("HTC Dumlock is installed.\n");
+	gui_print("HTC Dumlock is installed.\n");
 }
 
 void TWFunc::htc_dumlock_restore_original_boot(void) {
@@ -130,18 +165,18 @@ void TWFunc::htc_dumlock_restore_original_boot(void) {
 	if (!PartitionManager.Mount_By_Path("/sdcard", true))
 		return;
 
-	ui_print("Restoring original boot...\n");
+	gui_print("Restoring original boot...\n");
 	Exec_Cmd("htcdumlock restore", status);
-	ui_print("Original boot restored.\n");
+	gui_print("Original boot restored.\n");
 }
 
 void TWFunc::htc_dumlock_reflash_recovery_to_boot(void) {
 	string status;
 	if (!PartitionManager.Mount_By_Path("/sdcard", true))
 		return;
-	ui_print("Reflashing recovery to boot...\n");
+	gui_print("Reflashing recovery to boot...\n");
 	Exec_Cmd("htcdumlock recovery noreboot", status);
-	ui_print("Recovery is flashed to boot.\n");
+	gui_print("Recovery is flashed to boot.\n");
 }
 
 int TWFunc::Recursive_Mkdir(string Path) {
@@ -153,7 +188,7 @@ int TWFunc::Recursive_Mkdir(string Path) {
 	{
 		wholePath = pathCpy.substr(0, pos);
 		if (mkdir(wholePath.c_str(), 0777) && errno != EEXIST) {
-			LOGE("Unable to create folder: %s  (errno=%d)\n", wholePath.c_str(), errno);
+			LOGERR("Unable to create folder: %s  (errno=%d)\n", wholePath.c_str(), errno);
 			return false;
 		}
 
@@ -174,8 +209,8 @@ unsigned long long TWFunc::Get_Folder_Size(const string& Path, bool Display_Erro
 	d = opendir(Path.c_str());
 	if (d == NULL)
 	{
-		LOGE("error opening '%s'\n", Path.c_str());
-		LOGE("error: %s\n", strerror(errno));
+		LOGERR("error opening '%s'\n", Path.c_str());
+		LOGERR("error: %s\n", strerror(errno));
 		return 0;
 	}
 
@@ -236,81 +271,62 @@ unsigned long TWFunc::Get_File_Size(string Path) {
 	return st.st_size;
 }
 
-static const char *COMMAND_FILE = "/cache/recovery/command";
-static const char *INTENT_FILE = "/cache/recovery/intent";
-static const char *LOG_FILE = "/cache/recovery/log";
-static const char *LAST_LOG_FILE = "/cache/recovery/last_log";
-static const char *LAST_INSTALL_FILE = "/cache/recovery/last_install";
-static const char *CACHE_ROOT = "/cache";
-static const char *SDCARD_ROOT = "/sdcard";
-static const char *TEMPORARY_LOG_FILE = "/tmp/recovery.log";
-static const char *TEMPORARY_INSTALL_FILE = "/tmp/last_install";
-
-// close a file, log an error if the error indicator is set
-void TWFunc::check_and_fclose(FILE *fp, const char *name) {
-	fflush(fp);
-	if (ferror(fp)) LOGE("Error in %s\n(%s)\n", name, strerror(errno));
-	fclose(fp);
-}
-
-void TWFunc::copy_log_file(const char* source, const char* destination, int append) {
-	FILE *log = fopen_path(destination, append ? "a" : "w");
-	if (log == NULL) {
-		LOGE("Can't open %s\n", destination);
+void TWFunc::Copy_Log(string Source, string Destination) {
+	FILE *destination_log = fopen(Destination.c_str(), "a");
+	if (destination_log == NULL) {
+		LOGERR("TWFunc::Copy_Log -- Can't open destination log file: '%s'\n", Destination.c_str());
 	} else {
-		FILE *tmplog = fopen(source, "r");
-		if (tmplog != NULL) {
-			if (append) {
-				fseek(tmplog, tmplog_offset, SEEK_SET);  // Since last write
-			}
-			char buf[4096];
-			while (fgets(buf, sizeof(buf), tmplog)) fputs(buf, log);
-			if (append) {
-				tmplog_offset = ftell(tmplog);
-			}
-			check_and_fclose(tmplog, source);
+		FILE *source_log = fopen(Source.c_str(), "r");
+		if (source_log != NULL) {
+			fseek(source_log, Log_Offset, SEEK_SET);
+			char buffer[4096];
+			while (fgets(buffer, sizeof(buffer), source_log))
+				fputs(buffer, destination_log); // Buffered write of log file
+			Log_Offset = ftell(source_log);
+			fflush(source_log);
+			fclose(source_log);
 		}
-		check_and_fclose(log, destination);
+		fflush(destination_log);
+		fclose(destination_log);
 	}
 }
 
-// clear the recovery command and prepare to boot a (hopefully working) system,
-// copy our log file to cache as well (for the system to read), and
-// record any intent we were asked to communicate back to the system.
-// this function is idempotent: call it as many times as you like.
-void TWFunc::twfinish_recovery(const char *send_intent) {
-	// By this point, we're ready to return to the main system...
-	if (send_intent != NULL) {
-	FILE *fp = fopen_path(INTENT_FILE, "w");
-	if (fp == NULL) {
-		LOGE("Can't open %s\n", INTENT_FILE);
-	} else {
-		fputs(send_intent, fp);
-		check_and_fclose(fp, INTENT_FILE);
-	}
-	}
-
+void TWFunc::Update_Log_File(void) {
 	// Copy logs to cache so the system can find out what happened.
-	copy_log_file(TEMPORARY_LOG_FILE, LOG_FILE, true);
-	copy_log_file(TEMPORARY_LOG_FILE, LAST_LOG_FILE, false);
-	copy_log_file(TEMPORARY_INSTALL_FILE, LAST_INSTALL_FILE, false);
-	chmod(LOG_FILE, 0600);
-	chown(LOG_FILE, 1000, 1000);   // system user
-	chmod(LAST_LOG_FILE, 0640);
-	chmod(LAST_INSTALL_FILE, 0644);
+	Copy_Log(TMP_LOG_FILE, "/cache/recovery/log");
+	copy_file("/cache/recovery/log", "/cache/recovery/last_log", 600);
+	chown("/cache/recovery/log", 1000, 1000);
+	chmod("/cache/recovery/log", 0600);
+	chmod("/cache/recovery/last_log", 0640);
 
-	// Reset to normal system boot so recovery won't cycle indefinitely.
-	struct bootloader_message boot;
-	memset(&boot, 0, sizeof(boot));
-	set_bootloader_message(&boot);
+	// Reset bootloader message
+	TWPartition* Part = PartitionManager.Find_Partition_By_Path("/misc");
+	if (Part != NULL) {
+		struct bootloader_message boot;
+		memset(&boot, 0, sizeof(boot));
+		if (Part->Current_File_System == "mtd") {
+			if (set_bootloader_message_mtd_name(&boot, Part->MTD_Name.c_str()) != 0)
+				LOGERR("Unable to set MTD bootloader message.\n");
+		} else if (Part->Current_File_System == "emmc") {
+			if (set_bootloader_message_block_name(&boot, Part->Actual_Block_Device.c_str()) != 0)
+				LOGERR("Unable to set emmc bootloader message.\n");
+		} else {
+			LOGERR("Unknown file system for /misc: '%s'\n", Part->Current_File_System.c_str());
+		}
+	}
 
-	// Remove the command file, so recovery won't repeat indefinitely.
-	if (!PartitionManager.Mount_By_Path("/system", true) || (unlink(COMMAND_FILE) && errno != ENOENT)) {
-			LOGW("Can't unlink %s\n", COMMAND_FILE);
+	if (!PartitionManager.Mount_By_Path("/cache", true) || (unlink("/cache/recovery/command") && errno != ENOENT)) {
+		LOGINFO("Can't unlink %s\n", "/cache/recovery/command");
 	}
 
 	PartitionManager.UnMount_By_Path("/cache", true);
-	sync();  // For good measure.
+	sync();
+}
+
+void TWFunc::Update_Intent_File(string Intent) {
+	if (PartitionManager.Mount_By_Path("/cache", false) && !Intent.empty()) {
+		TWFunc::write_file("/cache/recovery/intent", Intent);
+	}
 }
 
 // reboot: Reboot the system. Return -1 on error, no return on success
@@ -319,32 +335,31 @@ int TWFunc::tw_reboot(RebootCommand command)
 	// Always force a sync before we reboot
 	sync();
 
-	switch (command)
-	{
-	case rb_current:
-	case rb_system:
-		twfinish_recovery("s");
-		sync();
-		check_and_run_script("/sbin/rebootsystem.sh", "reboot system");
-		return reboot(RB_AUTOBOOT);
-	case rb_recovery:
-		check_and_run_script("/sbin/rebootrecovery.sh", "reboot recovery");
-		return __reboot(LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2, LINUX_REBOOT_CMD_RESTART2, (void*) "recovery");
-	case rb_bootloader:
-		check_and_run_script("/sbin/rebootbootloader.sh", "reboot bootloader");
-		return __reboot(LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2, LINUX_REBOOT_CMD_RESTART2, (void*) "bootloader");
-	case rb_poweroff:
-		check_and_run_script("/sbin/poweroff.sh", "power off");
+	switch (command) {
+		case rb_current:
+		case rb_system:
+			Update_Log_File();
+			Update_Intent_File("s");
+			sync();
+			check_and_run_script("/sbin/rebootsystem.sh", "reboot system");
+			return reboot(RB_AUTOBOOT);
+		case rb_recovery:
+			check_and_run_script("/sbin/rebootrecovery.sh", "reboot recovery");
+			return __reboot(LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2, LINUX_REBOOT_CMD_RESTART2, (void*) "recovery");
+		case rb_bootloader:
+			check_and_run_script("/sbin/rebootbootloader.sh", "reboot bootloader");
+			return __reboot(LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2, LINUX_REBOOT_CMD_RESTART2, (void*) "bootloader");
+		case rb_poweroff:
+			check_and_run_script("/sbin/poweroff.sh", "power off");
 #ifdef ANDROID_RB_POWEROFF
-		android_reboot(ANDROID_RB_POWEROFF, 0, 0);
+			android_reboot(ANDROID_RB_POWEROFF, 0, 0);
 #endif
-		return reboot(RB_POWER_OFF);
-	case rb_download:
-		check_and_run_script("/sbin/rebootdownload.sh", "reboot download");
-		return __reboot(LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2, LINUX_REBOOT_CMD_RESTART2, (void*) "download");
-	return 1;
-	default:
-		return -1;
+			return reboot(RB_POWER_OFF);
+		case rb_download:
+			check_and_run_script("/sbin/rebootdownload.sh", "reboot download");
+			return __reboot(LINUX_REBOOT_MAGIC1, LINUX_REBOOT_MAGIC2, LINUX_REBOOT_CMD_RESTART2, (void*) "download");
+		default:
+			return -1;
 	}
 	return -1;
 }
@@ -355,10 +370,10 @@ void TWFunc::check_and_run_script(const char* script_file, const char* display_n
 	struct stat st;
 	string result;
 	if (stat(script_file, &st) == 0) {
-		ui_print("Running %s script...\n", display_name);
+		gui_print("Running %s script...\n", display_name);
 		chmod(script_file, S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 		TWFunc::Exec_Cmd(script_file, result);
-		ui_print("\nFinished running %s script.\n", display_name);
+		gui_print("\nFinished running %s script.\n", display_name);
 	}
 }
 
@@ -368,7 +383,7 @@ int TWFunc::removeDir(const string path, bool skipParent) {
 	string new_path;
 
 	if (d == NULL) {
-		LOGE("Error opening '%s'\n", path.c_str());
+		LOGERR("Error opening '%s'\n", path.c_str());
 		return -1;
 	}
 
@@ -385,12 +400,12 @@ int TWFunc::removeDir(const string path, bool skipParent) {
 					if (p->d_type == DT_DIR) 
 						r = rmdir(new_path.c_str());
 					else
-						LOGI("Unable to removeDir '%s': %s\n", new_path.c_str(), strerror(errno));
+						LOGINFO("Unable to removeDir '%s': %s\n", new_path.c_str(), strerror(errno));
 				}
 			} else if (p->d_type == DT_REG || p->d_type == DT_LNK || p->d_type == DT_FIFO || p->d_type == DT_SOCK) {
 				r = unlink(new_path.c_str());
 				if (r != 0) {
-					LOGI("Unable to unlink '%s: %s'\n", new_path.c_str(), strerror(errno));
+					LOGINFO("Unable to unlink '%s: %s'\n", new_path.c_str(), strerror(errno));
 				}
 			}
 		}
@@ -407,7 +422,7 @@ int TWFunc::removeDir(const string path, bool skipParent) {
 }
 
 int TWFunc::copy_file(string src, string dst, int mode) {
-	LOGI("Copying file %s to %s\n", src.c_str(), dst.c_str());
+	LOGINFO("Copying file %s to %s\n", src.c_str(), dst.c_str());
 	ifstream srcfile(src.c_str(), ios::binary);
 	ofstream dstfile(dst.c_str(), ios::binary);
 	dstfile << srcfile.rdbuf();
@@ -447,7 +462,7 @@ int TWFunc::read_file(string fn, string& results) {
                 file.close();
                 return 0;
 	}
-        LOGI("Cannot find file %s\n", fn.c_str());
+        LOGINFO("Cannot find file %s\n", fn.c_str());
         return -1;
 }
 
@@ -461,7 +476,7 @@ int TWFunc::read_file(string fn, vector<string>& results) {
 		file.close();
 		return 0;
 	}
-	LOGI("Cannot find file %s\n", fn.c_str());
+	LOGINFO("Cannot find file %s\n", fn.c_str());
 	return -1;
 }
 
@@ -473,8 +488,32 @@ int TWFunc::write_file(string fn, string& line) {
 		fclose(file);
 		return 0;
 	}
-	LOGI("Cannot find file %s\n", fn.c_str());
+	LOGINFO("Cannot find file %s\n", fn.c_str());
 	return -1;
+}
+
+vector<string> TWFunc::split_string(const string &in, char del, bool skip_empty) {
+	vector<string> res;
+
+	if (in.empty() || del == '\0')
+		return res;
+
+	string field;
+	istringstream f(in);
+	if (del == '\n') {
+		while(getline(f, field)) {
+			if (field.empty() && skip_empty)
+				continue;
+			res.push_back(field);
+		}
+	} else {
+		while(getline(f, field, del)) {
+			if (field.empty() && skip_empty)
+				continue;
+			res.push_back(field);
+		}
+	}
+	return res;
 }
 
 timespec TWFunc::timespec_diff(timespec& start, timespec& end)
@@ -531,44 +570,44 @@ bool TWFunc::Fix_su_Perms(void) {
 	string file = "/system/bin/su";
 	if (TWFunc::Path_Exists(file)) {
 		if (chown(file.c_str(), 0, 0) != 0) {
-			LOGE("Failed to chown '%s'\n", file.c_str());
+			LOGERR("Failed to chown '%s'\n", file.c_str());
 			return false;
 		}
 		if (tw_chmod(file, "6755") != 0) {
-			LOGE("Failed to chmod '%s'\n", file.c_str());
+			LOGERR("Failed to chmod '%s'\n", file.c_str());
 			return false;
 		}
 	}
 	file = "/system/xbin/su";
 	if (TWFunc::Path_Exists(file)) {
 		if (chown(file.c_str(), 0, 0) != 0) {
-			LOGE("Failed to chown '%s'\n", file.c_str());
+			LOGERR("Failed to chown '%s'\n", file.c_str());
 			return false;
 		}
 		if (tw_chmod(file, "6755") != 0) {
-			LOGE("Failed to chmod '%s'\n", file.c_str());
+			LOGERR("Failed to chmod '%s'\n", file.c_str());
 			return false;
 		}
 	}
 	file = "/system/bin/.ext/.su";
 	if (TWFunc::Path_Exists(file)) {
 		if (chown(file.c_str(), 0, 0) != 0) {
-			LOGE("Failed to chown '%s'\n", file.c_str());
+			LOGERR("Failed to chown '%s'\n", file.c_str());
 			return false;
 		}
 		if (tw_chmod(file, "6755") != 0) {
-			LOGE("Failed to chmod '%s'\n", file.c_str());
+			LOGERR("Failed to chmod '%s'\n", file.c_str());
 			return false;
 		}
 	}
 	file = "/system/app/Superuser.apk";
 	if (TWFunc::Path_Exists(file)) {
 		if (chown(file.c_str(), 0, 0) != 0) {
-			LOGE("Failed to chown '%s'\n", file.c_str());
+			LOGERR("Failed to chown '%s'\n", file.c_str());
 			return false;
 		}
 		if (tw_chmod(file, "0644") != 0) {
-			LOGE("Failed to chmod '%s'\n", file.c_str());
+			LOGERR("Failed to chmod '%s'\n", file.c_str());
 			return false;
 		}
 	}
@@ -677,7 +716,7 @@ int TWFunc::tw_chmod(string fn, string mode) {
 	}
 
 	if (chmod(fn.c_str(), mask) != 0) {
-		LOGE("Unable to chmod '%s' %l\n", fn.c_str(), mask);
+		LOGERR("Unable to chmod '%s' %l\n", fn.c_str(), mask);
 		return -1;
 	}
 
@@ -689,14 +728,183 @@ bool TWFunc::Install_SuperSU(void) {
 		return false;
 
 	if (copy_file("/supersu/su", "/system/xbin/su", 0755) != 0) {
-		LOGE("Failed to copy su binary to /system/bin\n");
+		LOGERR("Failed to copy su binary to /system/bin\n");
 		return false;
 	}
 	if (copy_file("/supersu/Superuser.apk", "/system/app/Superuser.apk", 0644) != 0) {
-		LOGE("Failed to copy Superuser app to /system/app\n");
+		LOGERR("Failed to copy Superuser app to /system/app\n");
 		return false;
 	}
 	if (!Fix_su_Perms())
 		return false;
 	return true;
+}
+
+int TWFunc::Get_File_Type(string fn) {
+	string::size_type i = 0;
+	int firstbyte = 0, secondbyte = 0;
+	char header[3];
+        
+	ifstream f;
+	f.open(fn.c_str(), ios::in | ios::binary);
+	f.get(header, 3);
+	f.close();
+	firstbyte = header[i] & 0xff;
+	secondbyte = header[++i] & 0xff;
+
+	if (firstbyte == 0x1f && secondbyte == 0x8b) {
+		return 1; // Compressed
+	} else if (firstbyte == 0x4f && secondbyte == 0x41) {
+		return 2; // Encrypted
+	} else {
+		return 0; // Unknown
+	}
+
+	return 0;
+}
+
+int TWFunc::Try_Decrypting_File(string fn, string password) {
+#ifndef TW_EXCLUDE_ENCRYPTED_BACKUPS
+	OAES_CTX * ctx = NULL;
+	uint8_t _key_data[32] = "";
+	FILE *f;
+	uint8_t buffer[4096];
+	uint8_t *buffer_out = NULL;
+	uint8_t *ptr = NULL;
+	size_t read_len = 0, out_len = 0;
+	int firstbyte = 0, secondbyte = 0, key_len;
+	size_t _j = 0;
+	size_t _key_data_len = 0;
+
+	// mostly kanged from OpenAES oaes.c
+	for( _j = 0; _j < 32; _j++ )
+		_key_data[_j] = _j + 1;
+	_key_data_len = password.size();
+	if( 16 >= _key_data_len )
+		_key_data_len = 16;
+	else if( 24 >= _key_data_len )
+		_key_data_len = 24;
+	else
+	_key_data_len = 32;
+	memcpy(_key_data, password.c_str(), password.size());
+
+	ctx = oaes_alloc();
+	if (ctx == NULL) {
+		LOGERR("Failed to allocate OAES\n");
+		return -1;
+	}
+
+	oaes_key_import_data(ctx, _key_data, _key_data_len);
+
+	f = fopen(fn.c_str(), "rb");
+	if (f == NULL) {
+		LOGERR("Failed to open '%s' to try decrypt\n", fn.c_str());
+		return -1;
+	}
+	read_len = fread(buffer, sizeof(uint8_t), 4096, f);
+	if (read_len <= 0) {
+		LOGERR("Read size during try decrypt failed\n");
+		fclose(f);
+		return -1;
+	}
+	if (oaes_decrypt(ctx, buffer, read_len, NULL, &out_len) != OAES_RET_SUCCESS) {
+		LOGERR("Error: Failed to retrieve required buffer size for trying decryption.\n");
+		fclose(f);
+		return -1;
+	}
+	buffer_out = (uint8_t *) calloc(out_len, sizeof(char));
+	if (buffer_out == NULL) {
+		LOGERR("Failed to allocate output buffer for try decrypt.\n");
+		fclose(f);
+		return -1;
+	}
+	if (oaes_decrypt(ctx, buffer, read_len, buffer_out, &out_len) != OAES_RET_SUCCESS) {
+		LOGERR("Failed to decrypt file '%s'\n", fn.c_str());
+		fclose(f);
+		free(buffer_out);
+		return 0;
+	}
+	fclose(f);
+	if (out_len < 2) {
+		LOGINFO("Successfully decrypted '%s' but read length %i too small.\n", fn.c_str(), out_len);
+		free(buffer_out);
+		return 1; // Decrypted successfully
+	}
+	ptr = buffer_out;
+	firstbyte = *ptr & 0xff;
+	ptr++;
+	secondbyte = *ptr & 0xff;
+	if (firstbyte == 0x1f && secondbyte == 0x8b) {
+		LOGINFO("Successfully decrypted '%s' and file is compressed.\n", fn.c_str());
+		free(buffer_out);
+		return 3; // Compressed
+	}
+	if (out_len >= 262) {
+		ptr = buffer_out + 257;
+		if (strncmp((char*)ptr, "ustar", 5) == 0) {
+			LOGINFO("Successfully decrypted '%s' and file is tar format.\n", fn.c_str());
+			free(buffer_out);
+			return 2; // Tar
+		}
+	}
+	free(buffer_out);
+	LOGINFO("No errors decrypting '%s' but no known file format.\n", fn.c_str());
+	return 1; // Decrypted successfully
+#else
+	LOGERR("Encrypted backup support not included.\n");
+	return -1;
+#endif
+}
+
+bool TWFunc::Try_Decrypting_Backup(string Restore_Path, string Password) {
+	DIR* d;
+
+	string Filename;
+	Restore_Path += "/";
+	d = opendir(Restore_Path.c_str());
+	if (d == NULL) {
+		LOGERR("Error opening '%s'\n", Restore_Path.c_str());
+		return false;
+	}
+
+	struct dirent* de;
+	while ((de = readdir(d)) != NULL) {
+		Filename = Restore_Path;
+		Filename += de->d_name;
+		if (TWFunc::Get_File_Type(Filename) == 2) {
+			if (TWFunc::Try_Decrypting_File(Filename, Password) < 2) {
+				DataManager::SetValue("tw_restore_password", ""); // Clear the bad password
+				DataManager::SetValue("tw_restore_display", "");  // Also clear the display mask
+				closedir(d);
+				return false;
+			}
+		}
+	}
+	closedir(d);
+	return true;
+}
+
+int TWFunc::Wait_For_Child(pid_t pid, int *status, string Child_Name) {
+	pid_t rc_pid;
+
+	rc_pid = waitpid(pid, status, 0);
+	if (rc_pid > 0) {
+		if (WEXITSTATUS(*status) == 0)
+			LOGINFO("%s process ended with RC=%d\n", Child_Name.c_str(), WEXITSTATUS(*status)); // Success
+		else if (WIFSIGNALED(*status)) {
+			LOGINFO("%s process ended with signal: %d\n", Child_Name.c_str(), WTERMSIG(*status)); // Seg fault or some other non-graceful termination
+			return -1;
+		} else if (WEXITSTATUS(*status) != 0) {
+			LOGINFO("%s process ended with ERROR=%d\n", Child_Name.c_str(), WEXITSTATUS(*status)); // Graceful exit, but there was an error
+			return -1;
+		}
+	} else { // no PID returned
+		if (errno == ECHILD)
+			LOGINFO("%s no child process exist\n", Child_Name.c_str());
+		else {
+			LOGINFO("%s Unexpected error\n", Child_Name.c_str());
+			return -1;
+		}
+	}
+	return 0;
 }

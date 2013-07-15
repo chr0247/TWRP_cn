@@ -18,9 +18,8 @@
 #include <string>
 
 extern "C" {
-#include "../common.h"
+#include "../twcommon.h"
 #include "../minuitwrp/minui.h"
-#include "../recovery_ui.h"
 }
 
 #include "rapidxml.hpp"
@@ -275,6 +274,7 @@ int GUIConsole::Update(void)
     {
         // They're still touching, so re-render
         Render();
+        mLastTouchY = -1;
         return 2;
     }
     return 0;
