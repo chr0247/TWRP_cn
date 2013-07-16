@@ -292,4 +292,33 @@
 <text id="signature_verification">Zip file signature verification?</text>
 <text id="signature_verification">Zip file signature verification.</text>
 <text id="zip_complete">Zip Install Complete</text>
-
+<text id="reboot_system0">System0</text>
+<text id="reboot_system1">System1</text>
+<text id="wipe_row_2">Wipes Data, Cache, and Dalvik</text>
+<text id="wipe_row_3">Most of the time this is</text>
+<text id="wipe_row_4">the only wipe that you need.</text>
+<text id="advanced_wipe">Advanced Wipe</text>
+<text id="factory_reset_swipe">Swipe to Factory Reset</text>
+<text id="select_partitions_to_wipe">Select Partitions to Wipe:</text>
+<text id="swipe_to_wipe">Swipe to Wipe</text>
+<text id="select_partitions_to_back_up">Select Partitions to Back Up:</text>
+<text id="no_encryption">No Encryption</text>
+<text id="use_military_time">Use Military Time.</text>
+<text id="screen">Screen</text>
+<text id="screen_settings">Screen Settings</text>
+<text id="enable_screen_timeout">Enable screen timeout.</text>
+<text id="screen_timeout_in_seconds">Screen timeout in seconds:</text>
+<text id="install_supersu">Install SuperSU?</text>
+<text id="not_appear_to_be_rooted">Your device does not appear to be rooted.</text>
+<text id="install_supersu_now">Install SuperSU now?</text>
+<text id="this_will_root">This will root your device.</text>
+<text id="do_not_install">Do Not Install</text>
+<text id="swipe_to_install">Swipe to Install</text>
+<action id="installing_supersu" function="set">tw_action_text1=Installing SuperSU</action>
+<text id="fix_superuser">Fix Superuser Permissions?</text>
+<text id="root_appear_to_be_lost">Root permissions appear to be lost.</text>
+<text id="fix_root_now">Fix root permissions now?</text>
+<text id="fix_on_su_binary">(Fixes permissions on su binary & app)</text>
+<text id="do_not_fix">Do Not Fix</text>
+<action id="fixing_root" function="set">tw_action_text1=Fixing Root Permissions</action>
+<text id="swipe_to_fix_root">Swipe to Fix Root</text>

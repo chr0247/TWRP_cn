@@ -329,23 +329,23 @@ void TWFunc::Update_Intent_File(string Intent) {
 	}
 }
 int TWFunc::setBootmode(char* bootmode) {
-   // open misc-partition
-   FILE* misc = fopen("/dev/block/platform/msm_sdcc.1/by-name/misc", "wb");
-   if (misc == NULL) {
-      printf("Failed Opening misc.\n");
-      return -1;
-   }
+	// open misc-partition
+	FILE* misc = fopen("/dev/block/platform/msm_sdcc.1/by-name/misc", "wb");
+	if (misc == NULL) {
+		printf("Failed Opening misc.\n");
+		return -1;
+	}
 
-   // write bootmode
-   fseek(misc, 0x1000, SEEK_SET);
-   if(fputs(bootmode, misc)<0) {
-      printf("Failed writting bootmode.\n");
-      return -1;
-   }
+	// write bootmode
+	fseek(misc, 0x1000, SEEK_SET);
+	if(fputs(bootmode, misc)<0) {
+		printf("Failed writting bootmode.\n");
+		return -1;
+		}
 
-   // close
-   fclose(misc);
-   return 0;
+	// close
+	fclose(misc);
+	return 0;
 }
 // reboot: Reboot the system. Return -1 on error, no return on success
 int TWFunc::tw_reboot(RebootCommand command)
@@ -362,14 +362,14 @@ int TWFunc::tw_reboot(RebootCommand command)
 			check_and_run_script("/sbin/rebootsystem.sh", "reboot system");
 			return reboot(RB_AUTOBOOT);
                 case rb_system0:
-                        TWFunc::setBootmode("boot-system0");
+			TWFunc::setBootmode("boot-system0");
 			Update_Log_File();
 			Update_Intent_File("s");
 			sync();
 			check_and_run_script("/sbin/rebootsystem.sh", "reboot system");
 			return reboot(RB_AUTOBOOT);
                 case rb_system1:
-                        TWFunc::setBootmode("boot-system1");
+			TWFunc::setBootmode("boot-system1");
 			Update_Log_File();
 			Update_Intent_File("s");
 			sync();

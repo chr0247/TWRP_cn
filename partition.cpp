@@ -871,7 +871,7 @@ bool TWPartition::Mount(bool Display_Error) {
 				}
 			}
 			return true;
-                        }
+			}
 
 	} else if (!exfat_mounted && mount(Actual_Block_Device.c_str(), Mount_Point.c_str(), "vfat", 0, "utf8") != 0 && mount(Actual_Block_Device.c_str(), Mount_Point.c_str(), Current_File_System.c_str(), 0, NULL) != 0) {
 #ifdef TW_NO_EXFAT_FUSE
@@ -957,7 +957,8 @@ bool TWPartition::UnMount(bool Display_Error) {
 				LOGINFO("Unable to unmount '%s'\n", Mount_Point.c_str());
 			return false;
 		} else {
-			return true; }
+			return true;
+		}
 	} else {
 		return true;
 	}

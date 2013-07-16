@@ -219,8 +219,8 @@
 	<string id="reboot_menu">Reboot Menu</string>
 	<string id="reboot_system">Reboot System</string>
 	<string id="reboot_recovery">Recovery</string>
-        <string id="reboot_system0">System1</string>
-        <string id="reboot_system1">System2</string>
+	<string id="reboot_system0">System1</string>
+	<string id="reboot_system1">System2</string>
 	<string id="backup_recovery">Recovery (%tw_backup_recovery_size% MB)</string>
 	<string id="htcdumlock_reflash_recovery">Reflash Recovery</string>
 	<string id="refresh_size">Refresh Sizes</string>
@@ -301,6 +301,34 @@
 	<string id="signature_verification">Zip file signature verification?</string>
 	<string id="signature_verification">Zip file signature verification.</string>
 	<string id="zip_complete">Zip Install Complete</string>
+	<string id="wipe_row_2">Wipes Data, Cache, and Dalvik</string>
+	<string id="wipe_row_3">Most of the time this is</string>
+	<string id="wipe_row_4">the only wipe that you need.</string>
+	<string id="advanced_wipe">Advanced Wipe</string>
+	<string id="factory_reset_swipe">Swipe to Factory Reset</string>
+	<string id="select_partitions_to_wipe">Select Partitions to Wipe:</string>
+	<string id="swipe_to_wipe">Swipe to Wipe</string>
+	<string id="select_partitions_to_back_up">Select Partitions to Back Up:</string>
+	<string id="no_encryption">No Encryption</string>
+	<string id="use_military_time">Use Military Time.</string>
+	<string id="screen">Screen</string>
+	<string id="screen_settings">Screen Settings</string>
+	<string id="enable_screen_timeout">Enable screen timeout.</string>
+	<string id="screen_timeout_in_seconds">Screen timeout in seconds:</string>
+	<string id="install_supersu">Install SuperSU?</text>
+	<string id="not_appear_to_be_rooted">Your device does not appear to be rooted.</text>
+	<string id="install_supersu_now">Install SuperSU now?</text>
+	<string id="this_will_root">This will root your device.</text>
+	<string id="do_not_install">Do Not Install</text>
+	<string id="swipe_to_install">Swipe to Install</text>
+	<string id="installing_supersu">tw_action_text1=Installing SuperSU</action>
+	<string id="fix_superuser">Fix Superuser Permissions?</text>
+	<string id="root_appear_to_be_lost">Root permissions appear to be lost.</text>
+	<string id="fix_root_now">Fix root permissions now?</text>
+	<string id="fix_on_su_binary">(Fixes permissions on su binary & app)</text>
+	<string id="do_not_fix">Do Not Fix</text>
+	<string id="fixing_root">tw_action_text1=Fixing Root Permissions</action>
+	<string id="swipe_to_fix_root">Swipe to Fix Root</text>
 </Languages>
 
 <Languages Language="zh-CN">
@@ -516,15 +544,15 @@
 	<string id="filemanagerchmod_enter_permissions">请输入新的权限</string>
 	<string id="decrypt_enter_password">请输入密码</string>
 	<string id="reboot_poweroff">关机</string>
-	<string id="back2cancel">按返回键取消添加这个zip包.</string>
+	<string id="back2cancel">按返回键取消.</string>
 	<string id="back2cancel">按返回键取消.</string>
 	<string id="advanced_reinject_twrp">重新注入TWRP</string>
 	<string id="reboot">重启</string>
 	<string id="reboot_menu">重启菜单</string>
 	<string id="reboot_system">重启系统</string>
 	<string id="reboot_recovery">Recovery模式</string>
-        <string id="reboot_system0">系统一</string>
-        <string id="reboot_system1">系统二</string>
+	<string id="reboot_system0">系统一</string>
+	<string id="reboot_system1">系统二</string>
 	<string id="backup_recovery">Recovery (%tw_backup_recovery_size% MB)</string>
 	<string id="htcdumlock_reflash_recovery">重刷Recovery</string>
 	<string id="refresh_size">刷新大小</string>
@@ -605,5 +633,33 @@
 	<string id="signature_verification">Zip文件签名校验.</string>
 	<string id="signature_verification">Zip文件签名校验.</string>
 	<string id="zip_complete">Zip包安装完成</string>
+	<string id="wipe_row_2">清空数据，缓存，和虚拟机缓存</string>
+	<string id="wipe_row_3">多数情况下这是</string>
+	<string id="wipe_row_4">唯一你需要的清空方式.</string>
+	<string id="advanced_wipe">高级</string>
+	<string id="factory_reset_swipe">滑动按钮清空数据</string>
+	<string id="select_partitions_to_wipe">选择要清空的分区:</string>
+	<string id="swipe_to_wipe">滑动按钮清空</string>
+	<string id="select_partitions_to_back_up">选择要备份的分区:</string>
+	<string id="no_encryption">无加密</string>
+	<string id="use_military_time">不显示AM/PM.</string>
+	<string id="screen">屏幕</string>
+	<string id="screen_settings">屏幕设置</string>
+	<string id="enable_screen_timeout">启用屏幕超时.</string>
+	<string id="screen_timeout_in_seconds">屏幕超时(秒):</string>
+	<string id="install_supersu">安装 SuperSU?</text>
+	<string id="not_appear_to_be_rooted">你的手机看起来没有Root.</text>
+	<string id="install_supersu_now">现在安装SuperSU?</text>
+	<string id="this_will_root">这将Root你的手机.</text>
+	<string id="do_not_install">不要安装</text>
+	<string id="swipe_to_install">滑动按钮安装</text>
+	<string id="installing_supersu">tw_action_text1=正在安装SuperSU</action>
+	<string id="fix_superuser">修复Root权限?</text>
+	<string id="root_appear_to_be_lost">Root权限丢失.</text>
+	<string id="fix_root_now">现在修复Root?</text>
+	<string id="fix_on_su_binary">(使用su文件和app来修复)</text>
+	<string id="do_not_fix">不要修复</text>
+	<string id="fixing_root">tw_action_text1=正在修复Root权限</action>
+	<string id="swipe_to_fix_root">滑动按钮修复Root</text>
 </Languages>
 
