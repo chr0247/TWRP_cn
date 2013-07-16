@@ -205,6 +205,12 @@ bool TWPartition::Process_Fstab_Line(string Line, bool Display_Error) {
 			Storage_Name = Display_Name;
 			Wipe_Available_in_GUI = true;
 			Can_Be_Backed_Up = true;
+                } else if (Mount_Point == "/system1") {
+                        Display_Name = "System1";
+			Backup_Display_Name = Display_Name;
+			Storage_Name = Display_Name;
+			Wipe_Available_in_GUI = true;
+			Can_Be_Backed_Up = true;
 		} else if (Mount_Point == "/data") {
 			Display_Name = "Data";
 			Backup_Display_Name = Display_Name;
@@ -801,6 +807,7 @@ bool TWPartition::Is_Mounted(void) {
 bool TWPartition::Mount(bool Display_Error) {
 	int exfat_mounted = 0;
 
+
 	if (Is_Mounted()) {
 		return true;
 	} else if (!Can_Be_Mounted) {
@@ -808,9 +815,9 @@ bool TWPartition::Mount(bool Display_Error) {
 	}
 
 	Find_Actual_Block_Device();
-
 	// Check the current file system before mounting
 	Check_FS_Type();
+
 	if (Current_File_System == "exfat" && TWFunc::Path_Exists("/sbin/exfat-fuse")) {
 		string cmd = "/sbin/exfat-fuse -o big_writes,max_read=131072,max_write=131072 " + Actual_Block_Device + " " + Mount_Point;
 		LOGINFO("cmd: %s\n", cmd.c_str());
@@ -864,6 +871,7 @@ bool TWPartition::Mount(bool Display_Error) {
 				}
 			}
 			return true;
+                        }
 
 	} else if (!exfat_mounted && mount(Actual_Block_Device.c_str(), Mount_Point.c_str(), "vfat", 0, "utf8") != 0 && mount(Actual_Block_Device.c_str(), Mount_Point.c_str(), Current_File_System.c_str(), 0, NULL) != 0) {
 #ifdef TW_NO_EXFAT_FUSE
@@ -948,8 +956,8 @@ bool TWPartition::UnMount(bool Display_Error) {
 			else
 				LOGINFO("Unable to unmount '%s'\n", Mount_Point.c_str());
 			return false;
-		} else
-			return true;
+		} else {
+			return true; }
 	} else {
 		return true;
 	}

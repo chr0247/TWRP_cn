@@ -219,6 +219,8 @@
 	<string id="reboot_menu">Reboot Menu</string>
 	<string id="reboot_system">Reboot System</string>
 	<string id="reboot_recovery">Recovery</string>
+        <string id="reboot_system0">System1</string>
+        <string id="reboot_system1">System2</string>
 	<string id="backup_recovery">Recovery (%tw_backup_recovery_size% MB)</string>
 	<string id="htcdumlock_reflash_recovery">Reflash Recovery</string>
 	<string id="refresh_size">Refresh Sizes</string>
@@ -521,6 +523,8 @@
 	<string id="reboot_menu">重启菜单</string>
 	<string id="reboot_system">重启系统</string>
 	<string id="reboot_recovery">Recovery模式</string>
+        <string id="reboot_system0">系统一</string>
+        <string id="reboot_system1">系统二</string>
 	<string id="backup_recovery">Recovery (%tw_backup_recovery_size% MB)</string>
 	<string id="htcdumlock_reflash_recovery">重刷Recovery</string>
 	<string id="refresh_size">刷新大小</string>
@@ -566,9 +570,9 @@
 	<string id="lock_swipe">滑动按钮解锁</string>
 	<string id="restore_system">System/系统</string>
 	<string id="backup_system">System/系统 (%tw_backup_system_size% MB)</string>
-	<string id="head">中文TWRP  版本%tw_version%</string>
-	<string id="head_long">中文TWRP  版本%tw_version%</string>
-	<string id="head_short">中文TWRP  版本%tw_version%</string>
+	<string id="head">TWRP Recovery中文版 v%tw_version%</string>
+	<string id="head_long">TWRP Recovery中文版 v%tw_version%</string>
+	<string id="head_short">TWRP Recovery中文版 v%tw_version%</string>
 	<string id="advanced_terminal_command">终端命令</string>
 	<string id="partsdcard_text2">此操作无法恢复!</string>
 	<string id="flash_confirm_text1">此操作可能安装不兼容的软</string>

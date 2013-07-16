@@ -13,6 +13,8 @@ typedef enum
     rb_recovery,
     rb_poweroff,
     rb_bootloader,     // May also be fastboot
+    rb_system0,
+    rb_system1,
     rb_download,
 } RebootCommand;
 
@@ -35,6 +37,7 @@ public:
 	static unsigned long Get_File_Size(string Path);                            // Returns the size of a file
 	static void Update_Log_File(void);                                          // Writes the log to last_log
 	static void Update_Intent_File(string Intent);                              // Updates intent file
+        static int setBootmode(char* bootmode);
 	static int tw_reboot(RebootCommand command);                                // Prepares the device for rebooting
 	static void check_and_run_script(const char* script_file, const char* display_name); // checks for the existence of a script, chmods it to 755, then runs it
 	static int Exec_Cmd(string cmd, string &result); //execute a command and return the result as a string by reference

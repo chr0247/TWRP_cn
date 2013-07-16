@@ -752,6 +752,8 @@ void DataManager::SetDefaultValues()
 #endif
 
     mConstValues.insert(make_pair(TW_REBOOT_SYSTEM, "1"));
+    mConstValues.insert(make_pair(TW_REBOOT_SYSTEM0, "1"));
+    mConstValues.insert(make_pair(TW_REBOOT_SYSTEM1, "1"));
 #ifdef TW_NO_REBOOT_RECOVERY
 	printf("TW_NO_REBOOT_RECOVERY := true\n");
 	mConstValues.insert(make_pair(TW_REBOOT_RECOVERY, "0"));

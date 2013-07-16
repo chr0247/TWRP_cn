@@ -226,6 +226,29 @@ int main(int argc, char **argv) {
 		PartitionManager.UnMount_By_Path("/system", false);
 	}
 
+	if (PartitionManager.Mount_By_Path("/system1", false)) {
+		// Disable flashing of stock recovery
+		if (TWFunc::Path_Exists("/system1/recovery-from-boot.p")) {
+			rename("/system1/recovery-from-boot.p", "/system1/recovery-from-boot.bak");
+			gui_print("Renamed stock recovery file in /system1 to prevent\nthe stock ROM from replacing TWRP.\n");
+		}
+		if (TWFunc::Path_Exists("/supersu/su") && !TWFunc::Path_Exists("/system1/bin/su") && !TWFunc::Path_Exists("/system1/xbin/su") && !TWFunc::Path_Exists("/system1/bin/.ext/.su")) {
+			// Device doesn't have su installed
+			DataManager::SetValue("tw_busy", 1);
+			if (gui_startPage("installsu") != 0) {
+				LOGERR("Failed to start decrypt GUI page.\n");
+			}
+		} else if (TWFunc::Check_su_Perms() > 0) {
+			// su perms are set incorrectly
+			DataManager::SetValue("tw_busy", 1);
+			if (gui_startPage("fixsu") != 0) {
+				LOGERR("Failed to start decrypt GUI page.\n");
+			}
+		}
+		sync();
+		PartitionManager.UnMount_By_Path("/system1", false);
+	}
+
     // Reboot
 	TWFunc::Update_Intent_File(Reboot_Value);
     TWFunc::Update_Log_File();
@@ -240,6 +263,10 @@ int main(int argc, char **argv) {
 		TWFunc::tw_reboot(rb_bootloader);
 	else if (Reboot_Arg == "download")
 		TWFunc::tw_reboot(rb_download);
+        else if (Reboot_Arg == "system0" )
+                TWFunc::tw_reboot(rb_system0);
+        else if (Reboot_Arg == "system1" )
+                TWFunc::tw_reboot(rb_system1);
 	else
 		TWFunc::tw_reboot(rb_system);
 

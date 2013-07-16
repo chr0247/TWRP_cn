@@ -110,6 +110,8 @@
 #define TW_REBOOT_RECOVERY          "tw_reboot_recovery"
 #define TW_REBOOT_POWEROFF          "tw_reboot_poweroff"
 #define TW_REBOOT_BOOTLOADER        "tw_reboot_bootloader"
+#define TW_REBOOT_SYSTEM0           "tw_reboot_system0"
+#define TW_REBOOT_SYSTEM1           "tw_reboot_system1"
 
 #define TW_HAS_DUAL_STORAGE         "tw_has_dual_storage"
 #define TW_USE_EXTERNAL_STORAGE     "tw_use_external_storage"

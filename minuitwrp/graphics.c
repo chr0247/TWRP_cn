@@ -36,7 +36,7 @@
 #ifdef BOARD_USE_CUSTOM_RECOVERY_FONT
 #include BOARD_USE_CUSTOM_RECOVERY_FONT
 #else
-#include "font_cn_32x32.h"
+#include "font_cn_20x20.h"
 #endif
 
 #ifdef RECOVERY_BGRA
@@ -53,6 +53,9 @@
 #endif
 
 #define NUM_BUFFERS 2
+
+/* PAGE_SIZE and PAGE_MASK come from "bionic/libc/kernel/arch-arm/asm/page.h" */
+#define PAGE_ALIGN(n)   ((n + PAGE_SIZE - 1) & PAGE_MASK)
 
 
 static GGLSurface font_ftex;
@@ -224,7 +227,7 @@ static int get_framebuffer(GGLSurface *fb)
     fb->data = (void*) (((unsigned) bits) + vi.yres * fi.line_length);
 #else
     fb->stride = vi.xres_virtual;
-    fb->data = (void*) (((unsigned) bits) + vi.yres * fb->stride * PIXEL_SIZE);
+    fb->data = (void*) (((unsigned) bits) + PAGE_ALIGN(vi.yres * fb->stride * PIXEL_SIZE));
 #endif
     fb->format = PIXEL_FORMAT;
     memset(fb->data, 0, vi.yres * fb->stride * PIXEL_SIZE);
